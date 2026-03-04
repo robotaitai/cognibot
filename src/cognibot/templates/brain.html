@@ -1,78 +1,428 @@
 <!doctype html>
 <html>
+
 <head>
-  <meta charset="utf-8"/>
+  <meta charset="utf-8" />
   <title>cognibot</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    body { font-family: system-ui, sans-serif; margin: 24px; }
-    code { background: #f3f3f3; padding: 2px 4px; border-radius: 4px; }
-    .row { display: flex; gap: 24px; align-items: flex-start; }
-    .card { border: 1px solid #ddd; border-radius: 12px; padding: 16px; flex: 1; min-width: 0; }
-    .small { color: #666; font-size: 13px; }
-    ul { max-height: 420px; overflow: auto; padding-left: 18px; }
-    h1 { margin-bottom: 6px; }
-    h3 { margin-top: 0; }
+    :root {
+      --bg: #0b0d10;
+      --card: #12161c;
+      --muted: #8da2b5;
+      --text: #e8f0f7;
+      --line: #1f2a35;
+      --accent: #6ee7ff;
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    header {
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      gap: 14px;
+      align-items: center;
+    }
+
+    h1 {
+      font-size: 18px;
+      margin: 0;
+      letter-spacing: 0.2px;
+    }
+
+    .meta {
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .btn {
+      background: #0f141a;
+      border: 1px solid var(--line);
+      color: var(--text);
+      padding: 8px 10px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    .btn:hover {
+      border-color: #2a3a4a;
+    }
+
+    .wrap {
+      display: flex;
+      min-height: calc(100vh - 62px);
+    }
+
+    nav {
+      width: 220px;
+      border-right: 1px solid var(--line);
+      padding: 14px;
+    }
+
+    .navitem {
+      display: block;
+      padding: 10px 10px;
+      border-radius: 10px;
+      color: var(--text);
+      text-decoration: none;
+      border: 1px solid transparent;
+      margin-bottom: 8px;
+    }
+
+    .navitem.active {
+      border-color: #2a3a4a;
+      background: var(--card);
+    }
+
+    main {
+      flex: 1;
+      padding: 18px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px;
+    }
+
+    .card h3 {
+      margin: 0 0 6px 0;
+      font-size: 13px;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .big {
+      font-size: 22px;
+      font-weight: 700;
+    }
+
+    .search {
+      width: 100%;
+      max-width: 520px;
+      background: #0f141a;
+      border: 1px solid var(--line);
+      color: var(--text);
+      padding: 10px 12px;
+      border-radius: 12px;
+      font-size: 13px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+    }
+
+    th,
+    td {
+      border-bottom: 1px solid var(--line);
+      padding: 10px 8px;
+      font-size: 13px;
+      text-align: left;
+    }
+
+    th {
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    code {
+      background: #0f141a;
+      border: 1px solid var(--line);
+      padding: 2px 6px;
+      border-radius: 8px;
+    }
+
+    pre {
+      background: #0f141a;
+      border: 1px solid var(--line);
+      padding: 14px;
+      border-radius: 14px;
+      overflow: auto;
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 10px;
+    }
+
+    .row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .spacer {
+      flex: 1;
+    }
+
+    @media (max-width: 1050px) {
+      .grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      nav {
+        display: none;
+      }
+    }
   </style>
 </head>
-<body>
-  <h1>cognibot</h1>
-  <div id="meta" class="small"></div>
 
-  <div class="row" style="margin-top:16px;">
-    <div class="card">
-      <h3>packages</h3>
-      <ul id="packages"></ul>
-    </div>
-    <div class="card">
-      <h3>launch files</h3>
-      <ul id="launch"></ul>
-    </div>
-    <div class="card">
-      <h3>interfaces</h3>
-      <div><b>msg</b><ul id="msg"></ul></div>
-      <div><b>srv</b><ul id="srv"></ul></div>
-      <div><b>action</b><ul id="action"></ul></div>
-    </div>
+<body>
+  <header>
+    <h1>cognibot</h1>
+    <div class="meta" id="meta">loading…</div>
+    <div class="spacer"></div>
+    <button class="btn" id="refreshBtn">refresh</button>
+    <button class="btn" id="openBrainBtn">open brain.md</button>
+  </header>
+
+  <div class="wrap">
+    <nav>
+      <a class="navitem active" href="#overview" data-tab="overview">overview</a>
+      <a class="navitem" href="#packages" data-tab="packages">packages</a>
+      <a class="navitem" href="#launch" data-tab="launch">launch</a>
+      <a class="navitem" href="#params" data-tab="params">params</a>
+      <a class="navitem" href="#interfaces" data-tab="interfaces">interfaces</a>
+      <a class="navitem" href="#brain" data-tab="brain">brain.md</a>
+      <a class="navitem" href="#history" data-tab="history">history</a>
+      <a class="navitem" href="#security" data-tab="security">security (stub)</a>
+    </nav>
+
+    <main>
+      <div class="row">
+        <input class="search" id="search" placeholder="search paths, packages, launch files…" />
+        <div class="hint" id="hint"></div>
+      </div>
+
+      <section id="tab-overview">
+        <div class="grid" style="margin-top:14px;">
+          <div class="card">
+            <h3>packages</h3>
+            <div class="big" id="cPackages">—</div>
+          </div>
+          <div class="card">
+            <h3>launch files</h3>
+            <div class="big" id="cLaunch">—</div>
+          </div>
+          <div class="card">
+            <h3>param files</h3>
+            <div class="big" id="cParams">—</div>
+          </div>
+          <div class="card">
+            <h3>brain tokens proxy</h3>
+            <div class="big" id="cTokens">—</div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:12px;">
+          <h3>what this is</h3>
+          <div style="font-size:13px; color:var(--muted); line-height:1.45;">
+            This dashboard is a view of the latest cognibot snapshot stored under <code>.cognibot/</code>.
+            Run <code>cognibot scan</code> to create a new snapshot, then hit refresh.
+          </div>
+        </div>
+      </section>
+
+      <section id="tab-packages" style="display:none;"></section>
+      <section id="tab-launch" style="display:none;"></section>
+      <section id="tab-params" style="display:none;"></section>
+      <section id="tab-interfaces" style="display:none;"></section>
+      <section id="tab-brain" style="display:none;"></section>
+      <section id="tab-history" style="display:none;"></section>
+      <section id="tab-security" style="display:none;">
+        <div class="card">
+          <h3>security (v0.0.2 stub)</h3>
+          <div style="color:var(--muted); font-size:13px; line-height:1.45;">
+            v0.0.3 will add an optional scanner runner (osv-scanner / trivy) and render results here.
+          </div>
+        </div>
+      </section>
+    </main>
   </div>
 
-<script>
-async function load() {
-  const idx = await fetch("../index.json").then(r=>r.json());
-  const sid = idx.latest_snapshot_id;
-  const snap = await fetch("../snapshots/" + sid + "/snapshot.json").then(r=>r.json());
+  <script>
+    let INDEX = null;
+    let SNAP = null;
+    let SNAP_ID = null;
+    let BRAIN = "";
 
-  document.getElementById("meta").innerText =
-    "snapshot " + snap.snapshot_id +
-    " | commit " + (snap.git_commit || "unknown") +
-    " | dirty " + snap.git_dirty +
-    " | created " + snap.created_at;
+    function $(id) { return document.getElementById(id); }
 
-  const pkgs = document.getElementById("packages");
-  (snap.packages || []).forEach(p => {
-    const li = document.createElement("li");
-    li.innerHTML = "<code>" + p.name + "</code> " +
-                   (p.build_type ? "(" + p.build_type + ")" : "") +
-                   " <span class='small'>— " + p.path + "</span>";
-    pkgs.appendChild(li);
-  });
+    async function fetchText(path) {
+      const r = await fetch(path, { cache: "no-store" });
+      if (!r.ok) throw new Error(`failed ${path}: ${r.status}`);
+      return await r.text();
+    }
+    async function fetchJSON(path) {
+      const r = await fetch(path, { cache: "no-store" });
+      if (!r.ok) throw new Error(`failed ${path}: ${r.status}`);
+      return await r.json();
+    }
 
-  const launch = document.getElementById("launch");
-  (snap.launch_files || []).slice(0,500).forEach(x => {
-    const li = document.createElement("li");
-    li.innerHTML = "<code>" + x + "</code>";
-    launch.appendChild(li);
-  });
+    function setActiveTab(tab) {
+      document.querySelectorAll(".navitem").forEach(a => a.classList.toggle("active", a.dataset.tab === tab));
+      ["overview", "packages", "launch", "params", "interfaces", "brain", "history", "security"].forEach(t => {
+        $("tab-" + t).style.display = (t === tab) ? "" : "none";
+      });
+      window.location.hash = tab;
+    }
 
-  ["msg","srv","action"].forEach(k => {
-    const ul = document.getElementById(k);
-    (snap.interfaces?.[k] || []).slice(0,300).forEach(x => {
-      const li = document.createElement("li");
-      li.innerHTML = "<code>" + x + "</code>";
-      ul.appendChild(li);
+    function renderTable(title, rows) {
+      const q = ($("search").value || "").toLowerCase();
+      const filtered = rows.filter(r => r.toLowerCase().includes(q));
+      const head = `<div class="card"><h3>${title}</h3><table><thead><tr><th>item</th></tr></thead><tbody>`;
+      const body = filtered.map(r => `<tr><td><code>${escapeHtml(r)}</code></td></tr>`).join("");
+      const tail = `</tbody></table><div class="hint">${filtered.length} shown</div></div>`;
+      return head + body + tail;
+    }
+
+    function escapeHtml(s) {
+      return s.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+    }
+
+    function renderAll() {
+      if (!INDEX || !SNAP) return;
+
+      const latest = (INDEX.history && INDEX.history.length) ? INDEX.history[INDEX.history.length - 1] : null;
+      $("cPackages").innerText = latest ? latest.packages : (SNAP.packages?.length || 0);
+      $("cLaunch").innerText = latest ? latest.launch_files : (SNAP.launch_files?.length || 0);
+      $("cParams").innerText = latest ? latest.param_files : (SNAP.param_files?.length || 0);
+      $("cTokens").innerText = latest ? latest.brain_tokens_proxy : "—";
+
+      $("tab-packages").innerHTML = renderPackages();
+      $("tab-launch").innerHTML = renderTable("launch files", SNAP.launch_files || []);
+      $("tab-params").innerHTML = renderTable("param files", SNAP.param_files || []);
+      $("tab-interfaces").innerHTML = renderInterfaces();
+      $("tab-brain").innerHTML = `<div class="card"><h3>brain.md (what the agent should read first)</h3><pre>${escapeHtml(BRAIN)}</pre></div>`;
+      $("tab-history").innerHTML = renderHistory();
+
+      $("hint").innerText = `snapshot ${SNAP.snapshot_id} loaded`;
+    }
+
+    function renderPackages() {
+      const q = ($("search").value || "").toLowerCase();
+      const pkgs = (SNAP.packages || []).filter(p => (p.name + " " + p.path).toLowerCase().includes(q));
+      const rows = pkgs.map(p => {
+        const deps = (p.depends || []).slice(0, 12).join(", ");
+        const more = (p.depends || []).length > 12 ? " …" : "";
+        return `<tr>
+      <td><code>${escapeHtml(p.name)}</code></td>
+      <td><code>${escapeHtml(p.path)}</code></td>
+      <td style="color:var(--muted)">${escapeHtml(p.build_type || "")}</td>
+      <td style="color:var(--muted)">${escapeHtml(deps + more)}</td>
+    </tr>`;
+      }).join("");
+
+      return `<div class="card">
+    <h3>packages</h3>
+    <table>
+      <thead><tr><th>name</th><th>path</th><th>build</th><th>deps (truncated)</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div class="hint">${pkgs.length} shown</div>
+  </div>`;
+    }
+
+    function renderInterfaces() {
+      const q = ($("search").value || "").toLowerCase();
+      const msg = (SNAP.interfaces?.msg || []).filter(x => x.toLowerCase().includes(q));
+      const srv = (SNAP.interfaces?.srv || []).filter(x => x.toLowerCase().includes(q));
+      const act = (SNAP.interfaces?.action || []).filter(x => x.toLowerCase().includes(q));
+
+      function block(name, arr) {
+        return `<div class="card" style="margin-top:12px;">
+      <h3>${name}</h3>
+      <table><thead><tr><th>path</th></tr></thead><tbody>
+        ${arr.map(x => `<tr><td><code>${escapeHtml(x)}</code></td></tr>`).join("")}
+      </tbody></table>
+      <div class="hint">${arr.length} shown</div>
+    </div>`;
+      }
+
+      return block("msg", msg) + block("srv", srv) + block("action", act);
+    }
+
+    function renderHistory() {
+      const hist = INDEX.history || [];
+      const rows = hist.slice().reverse().map(h => {
+        return `<tr>
+      <td><code>${escapeHtml(h.snapshot_id || "")}</code></td>
+      <td style="color:var(--muted)">${escapeHtml(h.created_at || "")}</td>
+      <td>${h.packages ?? ""}</td>
+      <td>${h.launch_files ?? ""}</td>
+      <td>${h.param_files ?? ""}</td>
+      <td>${h.msg ?? ""}/${h.srv ?? ""}/${h.action ?? ""}</td>
+      <td>${h.brain_tokens_proxy ?? ""}</td>
+    </tr>`;
+      }).join("");
+
+      return `<div class="card">
+    <h3>history (latest first)</h3>
+    <table>
+      <thead><tr><th>snapshot</th><th>time</th><th>pkgs</th><th>launch</th><th>params</th><th>ifaces</th><th>tokens</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div class="hint">run <code>cognibot scan</code> again to create a new snapshot and see progress here</div>
+  </div>`;
+    }
+
+    async function load() {
+      INDEX = await fetchJSON("../index.json");
+      SNAP_ID = INDEX.latest_snapshot_id;
+      SNAP = await fetchJSON("../snapshots/" + SNAP_ID + "/snapshot.json");
+      BRAIN = await fetchText("../snapshots/" + SNAP_ID + "/brain.md");
+
+      $("meta").innerText = `commit ${(SNAP.git_commit || "unknown")} | dirty ${SNAP.git_dirty} | snapshot ${SNAP.snapshot_id} | ${SNAP.created_at}`;
+      renderAll();
+    }
+
+    $("search").addEventListener("input", () => renderAll());
+
+    $("refreshBtn").addEventListener("click", async () => {
+      await load();
     });
-  });
-}
-load();
-</script>
+
+    $("openBrainBtn").addEventListener("click", () => {
+      if (!SNAP_ID) return;
+      window.open("../snapshots/" + SNAP_ID + "/brain.md", "_blank");
+    });
+
+    document.querySelectorAll(".navitem").forEach(a => {
+      a.addEventListener("click", (e) => {
+        e.preventDefault();
+        setActiveTab(a.dataset.tab);
+      });
+    });
+
+    window.addEventListener("hashchange", () => {
+      const tab = (window.location.hash || "#overview").replace("#", "");
+      setActiveTab(tab);
+    });
+
+    setActiveTab((window.location.hash || "#overview").replace("#", ""));
+    load();
+  </script>
 </body>
+
 </html>

@@ -1,10 +1,12 @@
 from __future__ import annotations
+
 from pathlib import Path
 import json
 import xml.etree.ElementTree as ET
 
 from .models import Snapshot, PackageInfo
 from .util import utc_now, get_git_info, make_snapshot_id, is_ignored_path, resolve_out_dir
+
 
 def _find_packages(repo: Path) -> list[PackageInfo]:
     pkgs: list[PackageInfo] = []
@@ -43,6 +45,7 @@ def _find_packages(repo: Path) -> list[PackageInfo]:
     pkgs.sort(key=lambda p: p.name.lower())
     return pkgs
 
+
 def _find_launch_and_params(repo: Path) -> tuple[list[str], list[str]]:
     launch: set[str] = set()
     params: set[str] = set()
@@ -64,6 +67,7 @@ def _find_launch_and_params(repo: Path) -> tuple[list[str], list[str]]:
 
     return sorted(launch), sorted(params)
 
+
 def _find_interfaces(repo: Path) -> dict[str, list[str]]:
     out: dict[str, set[str]] = {"msg": set(), "srv": set(), "action": set()}
     for kind in out.keys():
@@ -73,6 +77,7 @@ def _find_interfaces(repo: Path) -> dict[str, list[str]]:
             out[kind].add(str(f.relative_to(repo)))
 
     return {k: sorted(v) for k, v in out.items()}
+
 
 def _write_brain_md(snapshot: Snapshot, dest: Path) -> None:
     lines: list[str] = []
@@ -123,7 +128,23 @@ def _write_brain_md(snapshot: Snapshot, dest: Path) -> None:
         if len(vals) > 250:
             lines.append(f"- … ({len(vals) - 250} more)")
         lines.append("")
+
     dest.write_text("\n".join(lines), encoding="utf-8")
+
+
+def _load_index(out_dir: Path) -> dict:
+    idx_path = out_dir / "index.json"
+    if not idx_path.exists():
+        return {"latest_snapshot_id": None, "history": []}
+    try:
+        return json.loads(idx_path.read_text(encoding="utf-8"))
+    except Exception:
+        return {"latest_snapshot_id": None, "history": []}
+
+
+def _save_index(out_dir: Path, index: dict) -> None:
+    (out_dir / "index.json").write_text(json.dumps(index, indent=2), encoding="utf-8")
+
 
 def scan_repo(repo: Path, out: Path | None = None) -> Path:
     repo = repo.resolve()
@@ -157,5 +178,37 @@ def scan_repo(repo: Path, out: Path | None = None) -> Path:
     (snap_dir / "snapshot.json").write_text(snapshot.model_dump_json(indent=2), encoding="utf-8")
     _write_brain_md(snapshot, snap_dir / "brain.md")
 
-    (out_dir / "index.json").write_text(json.dumps({"latest_snapshot_id": snapshot_id}, indent=2), encoding="utf-8")
+    # Update index.json with history (progress over time)
+    brain_text = (snap_dir / "brain.md").read_text(encoding="utf-8")
+    brain_bytes = len(brain_text.encode("utf-8"))
+    brain_words = len(brain_text.split())
+    brain_tokens_proxy = int(brain_words * 1.3)
+
+    index = _load_index(out_dir)
+    index["latest_snapshot_id"] = snapshot_id
+    history = index.get("history", [])
+    entry = {
+        "snapshot_id": snapshot_id,
+        "created_at": snapshot.created_at.isoformat(),
+        "git_commit": snapshot.git_commit,
+        "git_dirty": snapshot.git_dirty,
+        "packages": len(packages),
+        "launch_files": len(launch_files),
+        "param_files": len(param_files),
+        "msg": len(interfaces.get("msg", [])),
+        "srv": len(interfaces.get("srv", [])),
+        "action": len(interfaces.get("action", [])),
+        "brain_bytes": brain_bytes,
+        "brain_words": brain_words,
+        "brain_tokens_proxy": brain_tokens_proxy,
+    }
+
+    # avoid duplicate consecutive snapshot ids
+    if not history or history[-1].get("snapshot_id") != snapshot_id:
+        history.append(entry)
+
+    # keep last 100
+    index["history"] = history[-100:]
+    _save_index(out_dir, index)
+
     return out_dir
