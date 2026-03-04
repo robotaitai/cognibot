@@ -1,37 +1,42 @@
 from __future__ import annotations
 
+from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
+import threading
 import webbrowser
 
 
-def serve_dir(out_dir: Path, host: str = "127.0.0.1", port: int = 8765, open_browser: bool = True) -> None:
+class BrainHandler(SimpleHTTPRequestHandler):
+    def do_GET(self):
+        # Route root to the UI dashboard
+        if self.path in ("/", "/index.html"):
+            self.path = "/ui/index.html"
+        return super().do_GET()
+
+    def end_headers(self):
+        # Disable caching so refresh shows new scans immediately
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Pragma", "no-cache")
+        self.send_header("Expires", "0")
+        super().end_headers()
+
+
+def serve_brain(out_dir: Path, host: str = "127.0.0.1", port: int = 8765, open_browser: bool = True) -> None:
     out_dir = out_dir.resolve()
 
-    class Handler(SimpleHTTPRequestHandler):
-        def __init__(self, *args, **kwargs):
-            super().__init__(*args, directory=str(out_dir), **kwargs)
+    def handler(*args, **kwargs):
+        return BrainHandler(*args, directory=str(out_dir), **kwargs)
 
-        # no-cache so refresh always shows latest
-        def end_headers(self):
-            self.send_header("Cache-Control", "no-store")
-            super().end_headers()
+    httpd = ThreadingHTTPServer((host, port), handler)
 
-    httpd = ThreadingHTTPServer((host, port), Handler)
-
-    # URL hint
+    local_url = f"http://localhost:{port}/"
+    print(f"\n[cognibot] Brain Studio running:")
+    print(f"  Local: {local_url}")
     if host == "0.0.0.0":
-        url = f"http://localhost:{port}/ui/brain.html"
-        print(f"[cognibot] serving on 0.0.0.0:{port} (LAN). open from another PC: http://<jetson-ip>:{port}/ui/brain.html")
-    else:
-        url = f"http://{host}:{port}/ui/brain.html"
-        print(f"[cognibot] serving: {url}")
+        print(f"  LAN:   http://<jetson-ip>:{port}/")
 
     if open_browser:
-        try:
-            webbrowser.open(url)
-        except Exception:
-            pass
+        threading.Timer(0.6, lambda: webbrowser.open(local_url)).start()
 
     try:
         httpd.serve_forever()

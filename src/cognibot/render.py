@@ -15,6 +15,6 @@ def render_ui(out_dir: Path) -> Path:
         .read_text(encoding="utf-8")
     )
 
-    dest = ui_dir / "brain.html"
+    dest = ui_dir / "index.html"
     dest.write_text(html, encoding="utf-8")
     return dest
