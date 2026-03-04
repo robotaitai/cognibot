@@ -1,0 +1,19 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "cognibot"
+version = "0.0.1"
+description = "Scan and visualize ROS2 repo structure for AI agents"
+requires-python = ">=3.11"
+dependencies = [
+    "typer>=0.12",
+    "pydantic>=2.0",
+]
+
+[project.scripts]
+cognibot = "cognibot.cli:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/cognibot"]

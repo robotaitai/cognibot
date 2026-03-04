@@ -1,0 +1,78 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>cognibot</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 24px; }
+    code { background: #f3f3f3; padding: 2px 4px; border-radius: 4px; }
+    .row { display: flex; gap: 24px; align-items: flex-start; }
+    .card { border: 1px solid #ddd; border-radius: 12px; padding: 16px; flex: 1; min-width: 0; }
+    .small { color: #666; font-size: 13px; }
+    ul { max-height: 420px; overflow: auto; padding-left: 18px; }
+    h1 { margin-bottom: 6px; }
+    h3 { margin-top: 0; }
+  </style>
+</head>
+<body>
+  <h1>cognibot</h1>
+  <div id="meta" class="small"></div>
+
+  <div class="row" style="margin-top:16px;">
+    <div class="card">
+      <h3>packages</h3>
+      <ul id="packages"></ul>
+    </div>
+    <div class="card">
+      <h3>launch files</h3>
+      <ul id="launch"></ul>
+    </div>
+    <div class="card">
+      <h3>interfaces</h3>
+      <div><b>msg</b><ul id="msg"></ul></div>
+      <div><b>srv</b><ul id="srv"></ul></div>
+      <div><b>action</b><ul id="action"></ul></div>
+    </div>
+  </div>
+
+<script>
+async function load() {
+  const idx = await fetch("../index.json").then(r=>r.json());
+  const sid = idx.latest_snapshot_id;
+  const snap = await fetch("../snapshots/" + sid + "/snapshot.json").then(r=>r.json());
+
+  document.getElementById("meta").innerText =
+    "snapshot " + snap.snapshot_id +
+    " | commit " + (snap.git_commit || "unknown") +
+    " | dirty " + snap.git_dirty +
+    " | created " + snap.created_at;
+
+  const pkgs = document.getElementById("packages");
+  (snap.packages || []).forEach(p => {
+    const li = document.createElement("li");
+    li.innerHTML = "<code>" + p.name + "</code> " +
+                   (p.build_type ? "(" + p.build_type + ")" : "") +
+                   " <span class='small'>— " + p.path + "</span>";
+    pkgs.appendChild(li);
+  });
+
+  const launch = document.getElementById("launch");
+  (snap.launch_files || []).slice(0,500).forEach(x => {
+    const li = document.createElement("li");
+    li.innerHTML = "<code>" + x + "</code>";
+    launch.appendChild(li);
+  });
+
+  ["msg","srv","action"].forEach(k => {
+    const ul = document.getElementById(k);
+    (snap.interfaces?.[k] || []).slice(0,300).forEach(x => {
+      const li = document.createElement("li");
+      li.innerHTML = "<code>" + x + "</code>";
+      ul.appendChild(li);
+    });
+  });
+}
+load();
+</script>
+</body>
+</html>
