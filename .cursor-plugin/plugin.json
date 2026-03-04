@@ -1,27 +1,14 @@
 {
   "name": "cognibot",
+  "displayName": "Cognibot",
   "version": "0.0.1",
-  "description": "Scan and visualize ROS2 repo structure for AI agents",
-  "commands": [
-    {
-      "id": "cognibot.install",
-      "title": "Cognibot: Install / Update",
-      "file": "commands/install-or-update.md"
-    },
-    {
-      "id": "cognibot.scan",
-      "title": "Cognibot: Scan Workspace",
-      "file": "commands/scan-workspace.md"
-    },
-    {
-      "id": "cognibot.render",
-      "title": "Cognibot: Render Dashboard",
-      "file": "commands/render-dashboard.md"
-    },
-    {
-      "id": "cognibot.stats",
-      "title": "Cognibot: Stats",
-      "file": "commands/stats.md"
-    }
-  ]
+  "description": "Traceable agent brain + repo snapshots for robotics/ROS2. Generates brain.md + brain.html and reduces repeated repo scanning.",
+  "author": { "name": "Itai" },
+  "repository": "https://github.com/robotaitai/cognibot",
+  "license": "MIT",
+  "keywords": ["robotics", "ros2", "traceability", "agent-memory"],
+  "category": "developer-tools",
+  "tags": ["robotics", "ros2", "traceability"],
+  "commands": "./commands/",
+  "rules": "./rules/"
 }

@@ -1,0 +1,12 @@
+---
+name: cognibot-brain-first
+description: Always use cognibot brain.md as canonical repo context before exploring the repo.
+---
+
+When working in a ROS2/robotics repo:
+
+- If .cognibot/index.json is missing, run: `cognibot scan --repo .`
+- Read the latest `.cognibot/snapshots/<snapshot_id>/brain.md` and use it as the primary map of the repo.
+- Prefer the brain to find packages/launch/params/interfaces before opening lots of files.
+
+This is the answer to "how does Cursor know to take things from cognibot?": rules steer the agent to scan + read brain.md first, which cuts token burn and prevents "repo guessing".
