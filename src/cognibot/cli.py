@@ -42,6 +42,12 @@ def _resolve_repo(repo: Path) -> Path:
     return repo
 
 
+def _resolve_out_dir(repo: Path, out: Path | None) -> Path:
+    if out is not None:
+        return Path(out)
+    return repo / ".cognibot"
+
+
 def _update_history(out_dir: Path):
     """
     Updates index.json with a history entry of the latest snapshot.
@@ -219,6 +225,22 @@ def run_end(
 
 
 # --- Architecture Commands ---
+
+@arch_app.command("generate")
+def arch_generate(
+    repo: Path = typer.Option(Path("."), help="Path to ROS2 repo"),
+):
+    """
+    Auto-generate architecture.mmd from the latest scan's wiring data.
+    The agent can then refine it for better layering and detail.
+    """
+    repo = _resolve_repo(repo)
+    out_dir = _resolve_out_dir(repo, None)
+    arch = ArchitectureManager(out_dir)
+    path = arch.generate()
+    typer.echo(f"[cognibot] wrote: {path}")
+    typer.echo("Tip: the agent can refine this — ask it to improve the architecture diagram.")
+
 
 @arch_app.command("snapshot")
 def arch_snapshot(

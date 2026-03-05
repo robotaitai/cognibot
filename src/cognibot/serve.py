@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+import os
+import signal
+import socket
 import threading
 import webbrowser
 
@@ -21,13 +24,43 @@ class BrainHandler(SimpleHTTPRequestHandler):
         super().end_headers()
 
 
+def _kill_port(port: int) -> bool:
+    """Kill any process currently listening on *port*. Returns True if something was killed."""
+    try:
+        import subprocess
+        result = subprocess.run(
+            ["lsof", "-ti", f":{port}"],
+            capture_output=True, text=True
+        )
+        pids = result.stdout.strip().split()
+        if not pids:
+            return False
+        for pid in pids:
+            try:
+                os.kill(int(pid), signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+        return True
+    except Exception:
+        return False
+
+
 def serve_brain(out_dir: Path, host: str = "127.0.0.1", port: int = 8765, open_browser: bool = True) -> None:
     out_dir = out_dir.resolve()
 
     def handler(*args, **kwargs):
         return BrainHandler(*args, directory=str(out_dir), **kwargs)
 
-    httpd = ThreadingHTTPServer((host, port), handler)
+    # If the port is already in use, kill the old server and retry once.
+    try:
+        httpd = ThreadingHTTPServer((host, port), handler)
+    except OSError as exc:
+        if exc.errno != 98:  # 98 = EADDRINUSE
+            raise
+        print(f"[cognibot] Port {port} in use — killing old server and retrying…")
+        _kill_port(port)
+        import time; time.sleep(0.5)
+        httpd = ThreadingHTTPServer((host, port), handler)
 
     local_url = f"http://localhost:{port}/"
     print(f"\n[cognibot] Brain Studio running:")

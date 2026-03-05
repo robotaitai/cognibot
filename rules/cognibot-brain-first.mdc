@@ -1,12 +1,42 @@
 ---
 name: cognibot-brain-first
-description: Always use cognibot brain.md as canonical repo context before exploring the repo.
+description: Use cognibot brain + knowledge as canonical repo context. Read before exploring, write back what you learn.
 ---
 
 When working in a ROS2/robotics repo:
 
-- If .cognibot/index.json is missing, run: `cognibot scan --repo .`
-- Read the latest `.cognibot/snapshots/<snapshot_id>/brain.md` and use it as the primary map of the repo.
-- Prefer the brain to find packages/launch/params/interfaces before opening lots of files.
+## Before you start
 
-This is the answer to "how does Cursor know to take things from cognibot?": rules steer the agent to scan + read brain.md first, which cuts token burn and prevents "repo guessing".
+1. If `.cognibot/index.json` is missing, run: `cognibot scan`
+2. Read `.cognibot/index.json` to get the `latest_snapshot_id`.
+3. Read `.cognibot/snapshots/<snapshot_id>/brain.md` — this is your map of the repo.
+   It contains your packages (with topic/service wiring), launch files, params,
+   and a diff of what changed since the last scan.
+4. Read `.cognibot/knowledge.md` — this is accumulated intelligence from past sessions.
+   It contains architecture notes, conventions, gotchas, and debug history.
+5. Use brain.md + knowledge.md BEFORE opening files. They answer most "where is X"
+   and "how does Y connect to Z" questions without burning tokens on exploration.
+
+## While you work
+
+Write to `.cognibot/knowledge.md` whenever you learn something that a future
+session would benefit from. Trigger points:
+
+- **After debugging** — write root cause + fix under `## debug notes`
+- **After discovering a non-obvious constraint** — write it under `## gotchas`
+- **After understanding how subsystems connect** — write it under `## architecture notes`
+- **After noticing a repo convention** — write it under `## conventions`
+- **Before your last response in a session** — review what you learned and
+  write anything valuable that isn't already in knowledge.md
+
+Format: `- [YYYY-MM-DD] concise one-liner about the learning`
+Keep entries short (1-2 lines). Don't repeat what brain.md already shows.
+
+The goal: the next AI session should start smarter than this one did.
+
+## When to re-scan
+
+Run `cognibot scan` when:
+- You've added/removed packages, launch files, or param files
+- You've changed topic/service wiring in node source code
+- The brain feels stale (brain.md shows a diff section when things change)

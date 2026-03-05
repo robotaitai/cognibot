@@ -1,120 +1,154 @@
 # cognibot
 **Traceable agent memory + repo brain for robotics and ROS 2.**  
-A Cursor plugin + CLI that turns “agent work” into a reproducible, inspectable, low-token workflow.
-
-cognibot generates:
-- an **agent-first markdown brain** (small, structured context)
-- a **human-friendly HTML dashboard** you can open locally
-- a **trace ledger** of agent runs, changes, commands, and artifacts
-
-So you always know:
-- what the agent “knows”
-- what it changed
-- why it changed it
-- what evidence it produced
+A Cursor plugin + CLI that turns "agent work" into a reproducible, inspectable, low-token workflow.
 
 > cognibot does not include an LLM. It makes LLM-based agents (Cursor, Claude Code, etc.) cheaper, clearer, and safer to operate.
 
 ---
 
-## why cognibot exists
+## what cognibot generates
 
-### clarity
-Robotics repos grow fast, and the real truth is scattered across:
-- `package.xml` and deps
-- launch files
-- params yaml
-- config stacks
-- interface definitions (msg/srv/action)
-- scripts, docs, and tribal knowledge
+### 1) brain.md — structured context for agents
+A concise, auto-generated snapshot of your repo. Not a flat file listing — actual intelligence:
 
-Agents and humans both pay the tax:
-- long onboarding
-- repeated repo scanning
-- “where is this configured?” dead ends
-- accidental edits in the wrong place
+- **Your packages first** — separated from vendor dependencies, with:
+  - topic wiring (what each node publishes/subscribes, with message types and node classes)
+  - service wiring (servers and clients)
+  - internal vs ROS dependency breakdown
+- **Topic wiring table** — cross-package pub/sub connections at a glance
+- **Service wiring table** — which package serves what, who calls it
+- **Your launch files and params only** — vendor noise collapsed to a single summary line per vendor repo
+- **Diff section** — what changed since the last scan (new packages, new topics, removed wiring)
+- **Vendor packages** — grouped by repo, listed for reference only
 
-**cognibot generates a canonical brain** that summarizes the repo structure and key entry points in a format agents can use immediately and humans can verify.
+### 2) knowledge.md — persistent AI memory
+A file the AI reads at session start and writes to during work. Sections:
 
-### traceability
-Agent-driven changes are often “chatty” but not auditable.
-In robotics, that’s dangerous, because regressions are rarely code-only.
+- **conventions** — coding patterns, naming rules, repo-specific practices
+- **architecture notes** — how subsystems connect, design rationale
+- **gotchas** — surprising behavior, non-obvious constraints
+- **debug notes** — what broke, root cause, fix applied, what to watch for
 
-cognibot logs every run as a ledger tied to:
-- git commit (and dirty state)
-- files read / modified
-- commands executed + exit codes
-- produced artifacts (logs, metrics, reports)
-- references to the brain snapshot used
+This is how the agent gets smarter over time. Each session's learnings persist for the next one.
 
-So debugging becomes: “show me the run, show me the evidence”, not “try to remember what happened in chat”.
+### 3) HTML dashboard
+`cognibot ui` opens a local browser dashboard to browse packages, launch files, params, interfaces, and scan history.
 
-### cost effectiveness (token + time)
-Agents are expensive when they repeatedly re-read your repo and “reconstruct context” from scratch.
-
-cognibot reduces cost by giving agents a small, stable, structured context:
-- the agent reads `brain.md` (and a few JSON files) instead of crawling hundreds/thousands of files
-- you can measure the delta (bytes/words/token proxy)
-- you can enforce that agent work is grounded in recorded sources
-
-This typically reduces:
-- context size
-- repeated scans
-- wrong fixes caused by missing config context
-- time-to-diagnose regressions
-
----
-
-## what you get
-
-### 1) agent brain (markdown)
-A generated, concise file designed to be dropped into agent context:
-- repo identity (commit, dirty, timestamp)
-- packages overview (build type, deps)
-- launch entry points
-- config/params inventory
-- interfaces inventory
-- pointers to “where the real behavior is defined”
-
-### 2) human brain (static HTML)
-Open locally, no server required:
-- browse packages / launch files / interfaces
-- see provenance header
-- later: browse run history, diffs, evidence artifacts
-
-### 3) run ledger
-A structured log of “what happened”:
-- intent → plan → actions → evidence → outcome
-- what files were touched
-- what commands were run
-- what changed since last run
-
-> We don’t expose hidden chain-of-thought. We expose **engineering trace** that’s actually useful and auditable.
-
----
-
-## how it helps Cursor/Claude agents work better
-
-When an agent has access to cognibot:
-- it stops “guessing” the repo structure, it reads a **canonical snapshot**
-- it can query deterministic tools instead of asking you to run commands
-- it writes changes with an audit trail (run ledger)
-- it produces evidence artifacts (reports, logs, metrics) as part of the workflow
-
-Net effect:
-- fewer tokens wasted on repo-reading
-- fewer wrong edits
-- faster debug loops
-- reliable collaboration between humans and agents
+### 4) run ledger
+Structured log of agent runs: intent → actions → evidence → outcome.
 
 ---
 
 ## quickstart
 
-### install (dev)
+### install
 ```bash
-git clone <this-repo>
-cd cognibot
-python -m venv .venv
-source .venv/bin/activate
-pip install -e .
+# one-liner: isolated venv, no project contamination
+bash ~/.cursor/plugins/local/cognibot/scripts/cognibot.sh --help
+
+# or manual:
+python3 -m venv ~/.cognibot/venv
+~/.cognibot/venv/bin/pip install -e ~/.cursor/plugins/local/cognibot
+ln -sf ~/.cognibot/venv/bin/cognibot ~/.local/bin/cognibot
+```
+
+### scan a ROS2 workspace
+```bash
+cd ~/your_ros2_workspace
+cognibot scan
+```
+
+This creates `.cognibot/` with:
+```
+.cognibot/
+├── index.json                    # snapshot history
+├── knowledge.md                  # persistent AI memory (created on first scan)
+├── snapshots/
+│   └── <snapshot_id>/
+│       ├── brain.md              # the agent-readable brain
+│       └── snapshot.json         # raw structured data
+└── ui/
+    └── index.html                # dashboard
+```
+
+### view the dashboard
+```bash
+cognibot ui          # scan + render + serve at http://localhost:8765
+cognibot ui --host 0.0.0.0   # LAN access (e.g. from your laptop to Jetson)
+```
+
+### other commands
+```bash
+cognibot scan        # re-scan the repo, generate new brain.md
+cognibot render      # regenerate the dashboard HTML
+cognibot serve       # serve an existing .cognibot without re-scanning
+cognibot stats       # print snapshot stats
+cognibot doctor      # health checks
+cognibot arch snapshot  # archive architecture artifacts into history
+cognibot run start "fixing nav stack"   # start a tracked run
+cognibot run log --run <id> --note "found the bug in tf listener"
+cognibot run end --run <id> --status success
+```
+
+---
+
+## how the agent uses cognibot
+
+The Cursor rule `cognibot-brain-first.mdc` tells agents to:
+
+1. **Read brain.md** before exploring the repo — it already has the package map, topic wiring, launch files, and params
+2. **Read knowledge.md** for accumulated learnings from past sessions
+3. **Write to knowledge.md** when discovering something non-obvious (gotchas, architecture decisions, debug findings)
+4. **Re-scan** when packages, launch files, or topic wiring change
+
+This is controlled by the rule file at:
+```
+~/.cursor/plugins/local/cognibot/rules/cognibot-brain-first.mdc
+```
+
+The rule is automatically picked up by Cursor when the workspace has a `.cognibot/` directory.
+
+---
+
+## how vendor vs user packages are detected
+
+cognibot uses directory depth under `src/`:
+- `src/<package_name>/` (depth 1) → **your package**
+- `src/<vendor_repo>/<package_name>/` (depth 2+) → **vendor package**
+
+This matches the standard ROS2 workspace convention where vendor repos are cloned as subdirectories (e.g., `src/depthai-ros/depthai_bridge/`).
+
+Topic/service extraction only runs on your packages (not vendor code), keeping scans fast.
+
+---
+
+## how topic/service extraction works
+
+cognibot parses Python and C++ source files for standard ROS2 API patterns:
+
+**Python:**
+- `self.create_publisher(MsgType, '/topic', ...)`
+- `self.create_subscription(MsgType, '/topic', ...)`
+- `self.create_service(SrvType, '/service', ...)`
+- `self.create_client(SrvType, '/service', ...)`
+- Node class detection via `class MyNode(Node):`
+
+**C++:**
+- `create_publisher<MsgType>("/topic", ...)`
+- `create_subscription<MsgType>("/topic", ...)`
+- `create_service<SrvType>("/service", ...)`
+- `create_client<SrvType>("/service", ...)`
+
+Results are deduplicated per package and shown in the brain's wiring tables.
+
+---
+
+## architecture generation
+
+cognibot includes a prompt template for AI-driven architecture generation. When you ask the agent to "generate the architecture", it follows `cognibot-generate-architecture.md` to produce:
+
+- `architecture.mmd` — Mermaid block diagram with layers and topic/service edges
+- `architecture.json` — structured model with evidence and confidence scores
+- `architecture.md` — human-readable explanation with unknowns
+
+Use `cognibot arch snapshot` to version these artifacts before regenerating.
